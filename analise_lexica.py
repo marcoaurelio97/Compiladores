@@ -1,29 +1,147 @@
 import json 
 
+tokens, erros = [], []
+
 def analisadorLexico(programa):
     # TODO: implementar essa funcao
-    tokens = []
-    erros = []
+    linha, indice, global_indice = 1, 0, 0
+
+    tipos = {
+        "Funcao": "reservado",
+        "Texto": "reservado",
+        "Logica": "reservado",
+        "Numero": "reservado"
+    }
+
+    op_simples = {
+        ",": "virgula",
+        "(": "abre-parenteses",
+        ")": "fecha-parenteses",
+        "{": "abre-chaves",
+        "}": "fecha-chaves",
+        "=": "operador-igual",
+        "<": "operador-menor",
+        ">": "operador-maior",
+        "+": "operador-mais"
+    }
+
+    op_duplos = {
+        "::": "atribuicao",
+        "!=": "operador-diferente",
+        "--": "comentario"
+    }
+
+    op_extras = {
+        "\n": "quebra-linha",
+        ":": "dois-pontos"
+    }
+
     token_text = ""
-    comentario = False
+    flag = ""
+    flag_indice = 0
 
     for c in programa:
-        # print c
-        if c == "-":
-            token_text += c
-            comentario = True
-        if c == "\n" and comentario:
-            comentario = False
+        if c in op_simples:
+            addToken(op_simples[c], c, linha, indice)
 
-            tokens.append({
-                    "grupo":"comentario",
-                    "texto": token_text,
-                "local":{"linha":1,"indice":0}
-            })
-        if token_text != "" and c != "-":
+        if c == "-" and programa[global_indice + 1] == "-":
+            flag = "comentario"
+            flag_indice = indice
+            token_text += c + programa[global_indice + 1]
+
+        if c == "\n":
+            if flag == "comentario":
+                flag = ""
+                addToken(op_duplos["--"], token_text, linha, flag_indice)
+                token_text = ""
+
+            addToken(op_extras["\n"], c, linha, indice)
+
+            linha += 1
+            indice = 0
+            continue
+
+        if c == ":":
+            if flag == "identificador":
+                flag = ""
+                addToken("identificador", token_text, linha, flag_indice)
+                token_text = ""
+                
+            if programa[global_indice + 1] == ":":
+                addToken(op_duplos["::"], "::", linha, indice)
+            elif programa[global_indice - 1] != ":":
+                addToken(op_extras[":"], ":", linha, indice)
+
+        if c != "-":
+            if flag != "comentario":
+                flag = "identificador"
+                if flag != "identificador":
+                    flag_indice = indice
+
             token_text += c
+
+        indice += 1
+        global_indice += 1
+
+    # for c in programa:
+    #     if c in op_simples:
+    #         addToken(op_simples[c], c, linha, indice)
+
+    #     if c == "-" and programa[global_indice + 1] == "-":
+    #         comentario = True
+    #         indice_comentario = indice
+    #         token_text += c + programa[global_indice + 1]
+
+    #     if c == "\n":
+    #         if comentario:
+    #             comentario = False
+    #             addToken(op_duplos["--"], token_text, linha, indice_comentario)
+    #             token_text = ""
+
+    #         addToken(op_extras["\n"], c, linha, indice)
+
+    #         linha += 1
+    #         indice = 0
+    #         continue
+
+    #     if c == ":":
+    #         if identificador:
+    #             identificador = False
+    #             addToken("identificador", token_text, linha, indice_identificador)
+    #             token_text = ""
+                
+    #         if programa[global_indice + 1] == ":":
+    #             addToken(op_duplos["::"], "::", linha, indice)
+    #         elif programa[global_indice - 1] != ":":
+    #             addToken(op_extras[":"], ":", linha, indice)
+
+    #     if c != "-":
+    #         if not comentario:
+    #             identificador = True
+    #             if not identificador:
+    #                 indice_identificador = indice
+
+    #         token_text += c
+
+    #     indice += 1
+    #     global_indice += 1
 
     return {"tokens":tokens,"erros":erros}
+
+
+def addToken(grupo, texto, linha, indice):
+    tokens.append({
+        "grupo": grupo,
+        "texto": texto,
+        "local": {"linha":linha,"indice":indice}
+    })
+
+
+def addErro(texto, linha, indice):
+    erros.append({
+        "local": {"linha":linha,"indice":indice},
+        "texto": texto
+    })
 
 # ALERTA: Nao modificar o codigo fonte apos esse aviso
 
