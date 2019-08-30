@@ -37,21 +37,18 @@ def analisadorLexico(programa):
     }
 
     token_text = ""
-    flag = ""
+    comentario, identificador, reservado = False, False, False
     flag_indice = 0
 
     for c in programa:
-        if c in op_simples:
-            addToken(op_simples[c], c, linha, indice)
-
         if c == "-" and programa[global_indice + 1] == "-":
-            flag = "comentario"
+            comentario = True
             flag_indice = indice
             token_text += c + programa[global_indice + 1]
 
         if c == "\n":
-            if flag == "comentario":
-                flag = ""
+            if comentario:
+                comentario = False
                 addToken(op_duplos["--"], token_text, linha, flag_indice)
                 token_text = ""
 
@@ -59,24 +56,55 @@ def analisadorLexico(programa):
 
             linha += 1
             indice = 0
+            global_indice += 1
             continue
 
         if c == ":":
-            if flag == "identificador":
-                flag = ""
-                addToken("identificador", token_text, linha, flag_indice)
+            if identificador:
+                identificador = False
+                if identificador:
+                    addToken("identificador", token_text, linha, flag_indice)
+                else:
+                    addToken("reservado", token_text, linha, flag_indice)
                 token_text = ""
                 
             if programa[global_indice + 1] == ":":
                 addToken(op_duplos["::"], "::", linha, indice)
             elif programa[global_indice - 1] != ":":
                 addToken(op_extras[":"], ":", linha, indice)
+            
+            indice += 1
+            global_indice += 1
+            continue
+
+        if c in op_simples:
+            if reservado:
+                reservado = False
+                addToken("reservado", token_text, linha, flag_indice)
+                token_text = ""
+            
+            addToken(op_simples[c], c, linha, indice)
+
+            indice += 1
+            global_indice += 1
+            continue
 
         if c != "-":
-            if flag != "comentario":
-                flag = "identificador"
-                if flag != "identificador":
-                    flag_indice = indice
+        # if c.isalpha() or c == " ":
+            if not comentario:
+                if not identificador:
+                    reservado = True
+                else:
+                    identificador = True
+
+
+
+                if c.isupper():
+                    reservado = True
+                else:
+                    identificador = True
+                
+                flag_indice = indice
 
             token_text += c
 
