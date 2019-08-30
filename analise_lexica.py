@@ -1,16 +1,29 @@
+#!/usr/bin/python3
+
 import json 
 
 tokens, erros = [], []
+linha, indice, global_indice = 1, 0, 0
 
 def analisadorLexico(programa):
     # TODO: implementar essa funcao
-    linha, indice, global_indice = 1, 0, 0
+    global linha, indice, global_indice
 
-    tipos = {
-        "Funcao": "reservado",
-        "Texto": "reservado",
-        "Logica": "reservado",
-        "Numero": "reservado"
+    logicos = {
+        "Sim": "logico",
+        "Nao": "logico"
+    }
+
+    reservados = {
+        "se": "reservado",
+        "se nao": "reservado",
+        "se nao se": "reservado",
+        "enquanto": "reservado",
+        "retorna": "reservado"
+    }
+
+    op_erros = {
+        "@": "desconhecido"
     }
 
     op_simples = {
@@ -27,17 +40,17 @@ def analisadorLexico(programa):
 
     op_duplos = {
         "::": "atribuicao",
-        "!=": "operador-diferente",
         "--": "comentario"
     }
 
     op_extras = {
         "\n": "quebra-linha",
-        ":": "dois-pontos"
+        ":": "dois-pontos",
+        "!=": "operador-diferente"
     }
 
     token_text = ""
-    comentario, identificador, reservado = False, False, False
+    comentario, text, number = False, False, False
     flag_indice = 0
 
     for c in programa:
@@ -46,11 +59,22 @@ def analisadorLexico(programa):
             flag_indice = indice
             token_text += c + programa[global_indice + 1]
 
-        if c == "\n":
+        elif c == "\n":
             if comentario:
                 comentario = False
                 addToken(op_duplos["--"], token_text, linha, flag_indice)
                 token_text = ""
+            
+            if text:
+                text = False
+                if token_text in logicos:
+                    addToken(logicos[token_text], token_text, linha, flag_indice)
+                    token_text = ""
+                else:
+                    token_text = token_text.split()
+                    addToken(reservados[token_text[0]], token_text[0], linha, flag_indice)
+                    addToken("identificador", token_text[1], linha, flag_indice + len(token_text[0]) + 1)
+                    token_text = ""
 
             addToken(op_extras["\n"], c, linha, indice)
 
@@ -59,13 +83,14 @@ def analisadorLexico(programa):
             global_indice += 1
             continue
 
-        if c == ":":
-            if identificador:
-                identificador = False
-                if identificador:
+        elif c == ":":
+            if text:
+                if not token_text.istitle():
                     addToken("identificador", token_text, linha, flag_indice)
                 else:
                     addToken("reservado", token_text, linha, flag_indice)
+
+                text = False
                 token_text = ""
                 
             if programa[global_indice + 1] == ":":
@@ -76,11 +101,62 @@ def analisadorLexico(programa):
             indice += 1
             global_indice += 1
             continue
+        
+        elif c == "'":
+            if token_text and token_text.count("#", len(token_text) - 2, len(token_text)) % 2 == 0:
+                text = False
+                token_text += c
+                addToken("texto", token_text, linha, flag_indice)
+                token_text = ""
+            else:
+                if not text:
+                    text = True
+                    flag_indice = indice
+                
+                token_text += c
 
-        if c in op_simples:
-            if reservado:
-                reservado = False
-                addToken("reservado", token_text, linha, flag_indice)
+            indice += 1
+            global_indice += 1
+            continue
+
+        elif c.isnumeric():
+            if not programa[global_indice + 1].isnumeric():
+                if not token_text:
+                    flag_indice = indice
+
+                token_text += c
+                addToken("numero", token_text, linha, flag_indice)
+                token_text = ""
+                number = False
+
+            else:
+                token_text += c
+                if not number:
+                    number = True
+                    flag_indice = indice
+
+            indice += 1
+            global_indice += 1
+            continue
+
+        elif c in op_simples:
+            if text:
+                text = False
+                if token_text in reservados:
+                    addToken(reservados[token_text], token_text, linha, flag_indice)
+                elif token_text + c in op_extras:
+                    token_text += c
+                    addToken(op_extras[token_text], token_text, linha, flag_indice)
+                    token_text = ""
+
+                    indice += 1
+                    global_indice += 1
+                    continue
+                elif not token_text.istitle():
+                    addToken("identificador", token_text.strip(), linha, flag_indice)
+                else:
+                    addToken("reservado", token_text, linha, flag_indice)
+
                 token_text = ""
             
             addToken(op_simples[c], c, linha, indice)
@@ -88,71 +164,31 @@ def analisadorLexico(programa):
             indice += 1
             global_indice += 1
             continue
+        
+        elif c in op_erros:
+            text = False
+            token_text = token_text[:-1]
+            addToken(reservados[token_text], token_text, linha, flag_indice)
+            addToken(op_erros[c], c, linha, indice)
+            addErro(f"simbolo, {c}, desconhecido", linha, indice)
+            token_text = ""
 
-        if c != "-":
-        # if c.isalpha() or c == " ":
+        elif c != "-":
             if not comentario:
-                if not identificador:
-                    reservado = True
-                else:
-                    identificador = True
+                if not text:
+                    text = True
+                    flag_indice = indice
 
-
-
-                if c.isupper():
-                    reservado = True
-                else:
-                    identificador = True
-                
-                flag_indice = indice
-
-            token_text += c
+            if c == " " and token_text == "":
+                indice += 1
+                global_indice += 1
+                text = False
+                continue
+            else:
+                token_text += c
 
         indice += 1
         global_indice += 1
-
-    # for c in programa:
-    #     if c in op_simples:
-    #         addToken(op_simples[c], c, linha, indice)
-
-    #     if c == "-" and programa[global_indice + 1] == "-":
-    #         comentario = True
-    #         indice_comentario = indice
-    #         token_text += c + programa[global_indice + 1]
-
-    #     if c == "\n":
-    #         if comentario:
-    #             comentario = False
-    #             addToken(op_duplos["--"], token_text, linha, indice_comentario)
-    #             token_text = ""
-
-    #         addToken(op_extras["\n"], c, linha, indice)
-
-    #         linha += 1
-    #         indice = 0
-    #         continue
-
-    #     if c == ":":
-    #         if identificador:
-    #             identificador = False
-    #             addToken("identificador", token_text, linha, indice_identificador)
-    #             token_text = ""
-                
-    #         if programa[global_indice + 1] == ":":
-    #             addToken(op_duplos["::"], "::", linha, indice)
-    #         elif programa[global_indice - 1] != ":":
-    #             addToken(op_extras[":"], ":", linha, indice)
-
-    #     if c != "-":
-    #         if not comentario:
-    #             identificador = True
-    #             if not identificador:
-    #                 indice_identificador = indice
-
-    #         token_text += c
-
-    #     indice += 1
-    #     global_indice += 1
 
     return {"tokens":tokens,"erros":erros}
 
@@ -167,8 +203,8 @@ def addToken(grupo, texto, linha, indice):
 
 def addErro(texto, linha, indice):
     erros.append({
-        "local": {"linha":linha,"indice":indice},
-        "texto": texto
+        "texto": texto,
+        "local": {"linha":linha,"indice":indice}
     })
 
 # ALERTA: Nao modificar o codigo fonte apos esse aviso
@@ -210,30 +246,29 @@ inicio:Funcao(valor:Logica,item:Texto):Numero::{
 }
 
 tiposDeVariaveis:Funcao::{
-    textoVar:Texto::'#'exemplo##'
-    numeroVar:Numero::1234
-    logicoVar:Logico::Sim
+  textoVar:Texto::'#'exemplo##'
+  numeroVar:Numero::1234
+  logicoVar:Logico::Sim
 }
 
 tiposDeFluxoDeControle:Funcao:Logico::{
-    resultado:Logico::Nao
+  resultado:Logico::Nao
 
-    se(1 = 2){
-        resultado::Nao
-    } se nao se('a' != 'a'){
-        resultado::Nao
-    } se nao @ {
-        resultado::Sim
-    }
+  se(1 = 2){
+    resultado::Nao
+  } se nao se('a' != 'a'){
+    resultado::Nao
+  } se nao @ {
+    resultado::Sim
+  }
 
-    contador:Numero::0
-    enquanto(contador < 10){
-        contador::contador + 'a'
-    }
+  contador:Numero::0
+  enquanto(contador < 10){
+    contador::contador + 'a'
+  }
 
-    retorna resultado
-}
-"""
+  retorna resultado
+}"""
 
 # Resultado esperado da execucao da funcao analisadorLexico
 # passando paea ela o programa anterior
@@ -572,7 +607,7 @@ teste = {
         },
         {
             "grupo":"texto", "texto": "'a'", 
-            "local":{"linha":17,"indice":15}
+            "local":{"linha":17,"indice":14}
         },
         {
             "grupo":"operador-diferente", "texto": "!=", 
