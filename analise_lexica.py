@@ -1,7 +1,6 @@
-#!/usr/bin/python3
-
 import json 
 
+# variáveis globais
 tokens, erros = [], []
 linha, indice, global_indice = 1, 0, 0
 
@@ -9,11 +8,13 @@ def analisadorLexico(programa):
     # TODO: implementar essa funcao
     global linha, indice, global_indice
 
+    # lista de tokens lógicos
     logicos = {
         "Sim": "logico",
         "Nao": "logico"
     }
 
+    # lista de tokens reservados
     reservados = {
         "se": "reservado",
         "se nao": "reservado",
@@ -22,10 +23,12 @@ def analisadorLexico(programa):
         "retorna": "reservado"
     }
 
+    # lista de tokens de erro
     op_erros = {
         "@": "desconhecido"
     }
 
+    # lista de tokens simples
     op_simples = {
         ",": "virgula",
         "(": "abre-parenteses",
@@ -38,11 +41,13 @@ def analisadorLexico(programa):
         "+": "operador-mais"
     }
 
+    # lista de tokens duplos
     op_duplos = {
         "::": "atribuicao",
         "--": "comentario"
     }
 
+    # lista de tokens extras
     op_extras = {
         "\n": "quebra-linha",
         ":": "dois-pontos",
@@ -50,150 +55,150 @@ def analisadorLexico(programa):
     }
 
     token_text = ""
-    comentario, text, number = False, False, False
+    comentario, text, number = False, False, False # variáveis de controle do tipo do texto
     flag_indice = 0
 
-    for c in programa:
-        if c == "-" and programa[global_indice + 1] == "-":
-            comentario = True
-            flag_indice = indice
-            token_text += c + programa[global_indice + 1]
+    for c in programa: # iteração em cada caractere do programa
+        if c == "-" and programa[global_indice + 1] == "-": # caso o caractere for um traço e o próximo também
+            comentario = True # então um comentário é iniciado
+            flag_indice = indice # o índice de início do comentário é salvo
+            token_text += c + programa[global_indice + 1] # os caracteres são atribuídos ao texto analisado
 
-        elif c == "\n":
-            if comentario:
-                comentario = False
-                addToken(op_duplos["--"], token_text, linha, flag_indice)
+        elif c == "\n": # caso o caractere for um quebra de linha
+            if comentario: # e for um comentário
+                comentario = False # o comentário foi finalizado
+                addToken(op_duplos["--"], token_text, linha, flag_indice) # e o token do comentário é adicionado
                 token_text = ""
             
-            if text:
-                text = False
-                if token_text in logicos:
-                    addToken(logicos[token_text], token_text, linha, flag_indice)
+            if text: # se for um texto
+                text = False # o texto foi finalizado
+                if token_text in logicos: # se o token obtido estiver na lista de lógicos
+                    addToken(logicos[token_text], token_text, linha, flag_indice) # é adicionado um token lógico
                     token_text = ""
-                else:
-                    token_text = token_text.split()
-                    addToken(reservados[token_text[0]], token_text[0], linha, flag_indice)
-                    addToken("identificador", token_text[1], linha, flag_indice + len(token_text[0]) + 1)
+                else: # caso não esteja na lista de lógicos
+                    token_text = token_text.split() # o token é um texto de retorno de função
+                    addToken(reservados[token_text[0]], token_text[0], linha, flag_indice) # o "retorna" é um token reservado
+                    addToken("identificador", token_text[1], linha, flag_indice + len(token_text[0]) + 1) # a variável retornada é um identificador
                     token_text = ""
 
-            addToken(op_extras["\n"], c, linha, indice)
+            addToken(op_extras["\n"], c, linha, indice) # o caractere "\n" é adicionado
 
-            linha += 1
-            indice = 0
-            global_indice += 1
+            linha += 1 # a linha é incrementada
+            indice = 0 # o índice da linha é zerado
+            global_indice += 1 # o índice global é incrementado
             continue
 
-        elif c == ":":
-            if text:
-                if not token_text.istitle():
-                    addToken("identificador", token_text, linha, flag_indice)
-                else:
-                    addToken("reservado", token_text, linha, flag_indice)
+        elif c == ":": # caso o caractere for dois pontos
+            if text: # e for um texto
+                if not token_text.istitle(): # e não começar com a primeira letra maiúscula
+                    addToken("identificador", token_text, linha, flag_indice) # o texto é um token identificador
+                else: #se começar com a primeira letra maiúscula
+                    addToken("reservado", token_text, linha, flag_indice) # o texto é um token reservado
 
                 text = False
                 token_text = ""
                 
-            if programa[global_indice + 1] == ":":
-                addToken(op_duplos["::"], "::", linha, indice)
-            elif programa[global_indice - 1] != ":":
-                addToken(op_extras[":"], ":", linha, indice)
+            if programa[global_indice + 1] == ":": # se o próximo caractere for dois pontos também
+                addToken(op_duplos["::"], "::", linha, indice) # o texto é um token de atribuição
+            elif programa[global_indice - 1] != ":": # se o caractere anterior não for dois pontos
+                addToken(op_extras[":"], ":", linha, indice) # o texto é um token de dois pontos
             
-            indice += 1
-            global_indice += 1
-            continue
+            indice += 1 # o índice da linha é incrementado
+            global_indice += 1 # o índice global é incrementado
+            continue # é continuado para o próximo caractere
         
-        elif c == "'":
-            if token_text and token_text.count("#", len(token_text) - 2, len(token_text)) % 2 == 0:
+        elif c == "'": # caso o caractere for uma aspas simples
+            if token_text and token_text.count("#", len(token_text) - 2, len(token_text)) % 2 == 0: # caso a quantidade de # nos 2 últimos caracteres for par
                 text = False
-                token_text += c
-                addToken("texto", token_text, linha, flag_indice)
+                token_text += c # o caractere é atribuído ao texto analisado
+                addToken("texto", token_text, linha, flag_indice) # o token é um texto
                 token_text = ""
             else:
-                if not text:
+                if not text: # se não for um texto
                     text = True
-                    flag_indice = indice
+                    flag_indice = indice # é salvo o índice do início do texto
                 
-                token_text += c
+                token_text += c # o caractere é atribuído ao texto analisado
 
-            indice += 1
-            global_indice += 1
-            continue
+            indice += 1 # o índice da linha é incrementado
+            global_indice += 1 # o índice global é incrementado
+            continue # é continuado para o próximo caractere
 
-        elif c.isnumeric():
-            if not programa[global_indice + 1].isnumeric():
+        elif c.isnumeric(): # se o caractere for numérico
+            if not programa[global_indice + 1].isnumeric(): # e o próximo caractere não for numérico
                 if not token_text:
-                    flag_indice = indice
+                    flag_indice = indice # é salvo o índice de início do número
 
-                token_text += c
-                addToken("numero", token_text, linha, flag_indice)
+                token_text += c # o caractere é atribuído ao texto analisado
+                addToken("numero", token_text, linha, flag_indice) # o texto é um token de número
                 token_text = ""
                 number = False
 
             else:
-                token_text += c
+                token_text += c # o caractere é atribuído ao texto analisado
                 if not number:
-                    number = True
-                    flag_indice = indice
+                    number = True # um número foi encontrado
+                    flag_indice = indice # é salvo o índice de início do número
 
-            indice += 1
-            global_indice += 1
-            continue
+            indice += 1 # o índice da linha é incrementado
+            global_indice += 1 # o índice global é incrementado
+            continue # é continuado para o próximo caractere
 
-        elif c in op_simples:
-            if text:
+        elif c in op_simples: # se o caractere estiver na lista de tokens simples
+            if text: # se for um texto
                 text = False
-                if token_text in reservados:
-                    addToken(reservados[token_text], token_text, linha, flag_indice)
-                elif token_text + c in op_extras:
-                    token_text += c
-                    addToken(op_extras[token_text], token_text, linha, flag_indice)
+                if token_text in reservados: # se estiver na lista de reservado
+                    addToken(reservados[token_text], token_text, linha, flag_indice) # o texto é um token reservado
+                elif token_text + c in op_extras: # se estiver na lista de tokens extras
+                    token_text += c # o caractere é atribuído ao texto analisado
+                    addToken(op_extras[token_text], token_text, linha, flag_indice) # o texto é um token extra
                     token_text = ""
 
-                    indice += 1
-                    global_indice += 1
-                    continue
-                elif not token_text.istitle():
-                    addToken("identificador", token_text.strip(), linha, flag_indice)
-                else:
-                    addToken("reservado", token_text, linha, flag_indice)
+                    indice += 1 # o índice da linha é incrementado
+                    global_indice += 1 # o índice global é incrementado
+                    continue # é continuado para o próximo caractere
+                elif not token_text.istitle(): # se o texto não começar com a primeira letra maiúscula
+                    addToken("identificador", token_text.strip(), linha, flag_indice) # o token é um token identificador
+                else: #se começar com a primeira letra maiúscula
+                    addToken("reservado", token_text, linha, flag_indice) # o texto é um token reservado
 
                 token_text = ""
             
             addToken(op_simples[c], c, linha, indice)
 
-            indice += 1
-            global_indice += 1
-            continue
+            indice += 1 # o índice da linha é incrementado
+            global_indice += 1 # o índice global é incrementado
+            continue # é continuado para o próximo caractere
         
-        elif c in op_erros:
+        elif c in op_erros: # se o caractere estiver na lista de erros
             text = False
-            token_text = token_text[:-1]
-            addToken(reservados[token_text], token_text, linha, flag_indice)
-            addToken(op_erros[c], c, linha, indice)
-            addErro(f"simbolo, {c}, desconhecido", linha, indice)
+            token_text = token_text[:-1] # um espaço desnecessário é removido
+            addToken(reservados[token_text], token_text, linha, flag_indice) # o texto é um token reservado
+            addToken(op_erros[c], c, linha, indice) # o caractere de erro é adicionado aos tokens
+            addErro(f"simbolo, {c}, desconhecido", linha, indice) # e adicionado a lista de erros
             token_text = ""
 
-        elif c != "-":
-            if not comentario:
-                if not text:
-                    text = True
-                    flag_indice = indice
+        elif c != "-": # se o caractere for diferente de traço
+            if not comentario: # e não for um comentário
+                if not text: # e não for um texto
+                    text = True # então é um texto
+                    flag_indice = indice # e o índice de início do texto é salvo
 
-            if c == " " and token_text == "":
-                indice += 1
-                global_indice += 1
-                text = False
-                continue
+            if c == " " and token_text == "": # se o caractere for um espaço e o texto analisado estiver vazio
+                text = False # não é um texto
+                indice += 1 # o índice da linha é incrementado
+                global_indice += 1 # o índice global é incrementado
+                continue # é continuado para o próximo caractere
             else:
-                token_text += c
+                token_text += c # o caractere é atribuído ao texto analisado
 
-        indice += 1
-        global_indice += 1
+        indice += 1 # o índice da linha é incrementado
+        global_indice += 1 # o índice global é incrementado
 
-    return {"tokens":tokens,"erros":erros}
+    return {"tokens":tokens,"erros":erros} # é retornado todos os tokens e erros encontrados
 
 
-def addToken(grupo, texto, linha, indice):
+def addToken(grupo, texto, linha, indice): # função que adiciona um token à lista de tokens
     tokens.append({
         "grupo": grupo,
         "texto": texto,
@@ -201,7 +206,7 @@ def addToken(grupo, texto, linha, indice):
     })
 
 
-def addErro(texto, linha, indice):
+def addErro(texto, linha, indice): # função que adiciona um erro à lista de erros
     erros.append({
         "texto": texto,
         "local": {"linha":linha,"indice":indice}
